@@ -12,8 +12,16 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 
+# import os
+from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
+
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# API_KEY = os.getenv("API_KEY")
 
 
 # Quick-start development settings - unsuitable for production
@@ -35,7 +43,7 @@ ALLOWED_HOSTS = [
 ]
 
 
-CORS_ALLOW_HEADERS = [
+CORS_ALLOW_HEADERS = list(default_headers) + [
     "Accept",
     "Accept-Encoding",
     "Accept-Language",
@@ -52,6 +60,10 @@ CORS_ALLOW_HEADERS = [
     'concise-egomaniac-starved.ngrok-free.dev',
     "company-shaping-explode.ngrok-free.dev",
     "primary-sculpture-empathy.ngrok-free.dev",
+
+    "user_token",
+    "user-token",
+    "x-api-key",
 ]
 
 
