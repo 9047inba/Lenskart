@@ -37,33 +37,75 @@ class PrescriptionAdmin(admin.ModelAdmin):
         "birth_year",
     )
 
-@admin.register(glass_product)
-class GlassProductAdmin(admin.ModelAdmin):
+# @admin.register(glass_product)
+# class GlassProductAdmin(admin.ModelAdmin):
 
-    list_display = (
+#     list_display = (
+#         "id",
+#         "model_name",
+#         "category_type",
+#         "frame_size",
+#         "price",
+#         "structure_style",
+#         "target_audience",
+#         "collection_tier",
+#         "includes_adjustable_nose_pad",
+#         "created_at"
+#     )
+
+#     search_fields = (
+#         "model_name",
+#     )
+
+#     list_filter = (
+#         "category_type",
+#         "frame_size",
+#         "structure_style",
+#         "target_audience",
+#         "collection_tier",
+#     )
+
+
+@admin.register(glass_product)
+class glassProductAdmin(admin.ModelAdmin):
+
+    list_display = [
         "id",
-        "model_name",
+        "product_name",
         "category_type",
         "frame_size",
         "price",
+        "color",
+        "like",
+        "rating",
         "structure_style",
         "target_audience",
         "collection_tier",
         "includes_adjustable_nose_pad",
-        "created_at"
-    )
+        "applicable_for_buy_one_get_one",
+        "created_at",
+    ]
 
-    search_fields = (
-        "model_name",
-    )
-
-    list_filter = (
+    list_filter = [
         "category_type",
         "frame_size",
         "structure_style",
         "target_audience",
         "collection_tier",
-    )
+        "like",
+        "includes_adjustable_nose_pad",
+        "applicable_for_buy_one_get_one",
+    ]
 
+    search_fields = [
+        "product_name",
+        "category_type",
+        "color",
+        "target_audience",
+        "collection_tier",
+    ]
 
+    ordering = [
+        "-created_at"
+    ]
     

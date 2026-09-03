@@ -298,18 +298,27 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
 class GlassProductSerializer(serializers.ModelSerializer):
 
-    product_name = serializers.CharField(source="model_name",read_only=True)
-    like = serializers.SerializerMethodField()
-
     class Meta:
-
         model = glass_product
 
         fields = [
             "id",
-            "model_name",
             "product_name",
             "like",
+            "category_type",
+            "frame_size",
+            "price",
+            "rating",
+            "structure_style",
+            "target_audience",
+            "collection_tier",
+            "available_colors",
+            "includes_adjustable_nose_pad",
+            "applicable_for_buy_one_get_one",
+            "created_at",
+        ]
+        search_fields = [
+            "product_name",
             "category_type",
             "frame_size",
             "price",
@@ -318,34 +327,12 @@ class GlassProductSerializer(serializers.ModelSerializer):
             "structure_style",
             "target_audience",
             "collection_tier",
-            "includes_adjustable_nose_pad",
-            "created_at"
         ]
 
         read_only_fields = [
             "id",
-            "product_name",
             "created_at",
-            "like",
         ]
-
-
-    # ========================================================
-    # LIKE / UNLIKE
-    # ========================================================
-
-    def get_like(self, obj):
-
-        user = self.context.get("user")
-
-        if not user:
-
-            return False
-
-        return Wishlist.objects.filter(
-            user=user,
-            product=obj
-        ).exists()
 
 
 # --------------------------------------------------------------------------------------
@@ -366,37 +353,191 @@ class WishlistSerializer(serializers.ModelSerializer):
         ]
 
 
+# ============================================================
+# CHECKOUT PRESCRIPTION RESPONSE SERIALIZER
+# ============================================================
 
-# class EyeglassesSerializer(serializers.ModelSerializer):
+class CheckoutPrescriptionSerializer(serializers.ModelSerializer):
 
-#     class Meta:
+    right_eye = serializers.SerializerMethodField()
+    left_eye = serializers.SerializerMethodField()
 
-#         model = glass_product
+    class Meta:
 
-#         fields = [
-#             "id",
-#             "model_name",
-#             "category_type",
-#             "color",
-#             "price",
-#             "rating",
-#         ]
+        model = prescription
+
+        fields = [
+            "name",
+            "birth_year",
+            "right_eye",
+            "left_eye",
+        ]
+
+    def get_right_eye(self, obj):
+
+        return {
+            "sph": str(obj.right_sph),
+            "cyl": (
+                str(obj.right_cyl)
+                if obj.right_cyl is not None
+                else None
+            ),
+            "axis": (
+                str(obj.right_axis)
+                if obj.right_axis is not None
+                else None
+            ),
+        }
+
+    def get_left_eye(self, obj):
+
+        return {
+            "sph": str(obj.left_sph),
+            "cyl": (
+                str(obj.left_cyl)
+                if obj.left_cyl is not None
+                else None
+            ),
+            "axis": (
+                str(obj.left_axis)
+                if obj.left_axis is not None
+                else None
+            ),
+        }
 
 
-# class SunglassesSerializer(serializers.ModelSerializer):
+# ============================================================
+# CHECKOUT PRESCRIPTION INPUT SERIALIZER
+# ============================================================
 
-#     class Meta:
+class CheckoutPrescriptionInputSerializer(serializers.Serializer):
 
-#         model = glass_product
+    name = serializers.CharField(required=True)
 
-#         fields = [
-#             "id",
-#             "model_name",
-#             "category_type",
-#             "color",
-#             "price",
-#             "rating",
-#         ]
+    birth_year = serializers.IntegerField(required=True)
+
+    right_eye = serializers.DictField(required=True)
+
+    left_eye = serializers.DictField(required=True)
+
+    def validate_right_eye(self, value):
+
+        if "sph" not in value:
+
+            raise serializers.ValidationError(
+                "right_eye.sph is required."
+            )
+
+        return value
+
+    def validate_left_eye(self, value):
+
+        if "sph" not in value:
+
+            raise serializers.ValidationError(
+                "left_eye.sph is required."
+            )
+
+        return value
+
+
+# ============================================================
+# SELECT LENS SERIALIZER
+# ============================================================
+
+class SelectLensSerializer(serializers.ModelSerializer):
+
+    lenstype = serializers.CharField(source="lens_type",required=True)
+    lenspackage = serializers.CharField(source="lens_package",required=True)
+    checkoutprescription = CheckoutPrescriptionInputSerializer(source="checkout_prescription",required=True)
+
+    class Meta:
+
+        model = SelectLens
+        fields = [
+            "id",
+            "lenstype",
+            "lenspackage",
+            "checkoutprescription",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+        ]
+
+    def create(self, validated_data):
+
+        prescription_data = validated_data.pop("checkout_prescription")
+        right_eye = prescription_data.pop("right_eye")
+        left_eye = prescription_data.pop("left_eye")
+        prescription_obj = prescription.objects.create(
+            name=prescription_data["name"],
+            birth_year=prescription_data["birth_year"],
+            # RIGHT EYE
+            right_sph=right_eye["sph"],
+            right_cyl=right_eye.get("cyl"),
+            right_axis=right_eye.get("axis"),
+            # LEFT EYE
+            left_sph=left_eye["sph"],
+            left_cyl=left_eye.get("cyl"),
+            left_axis=left_eye.get("axis"),
+        )
+        select_lens = SelectLens.objects.create(
+            checkout_prescription=prescription_obj,
+            **validated_data
+        )
+
+        return select_lens
+
+
+# ============================================================
+# CHECKOUT SERIALIZER
+# ============================================================
+
+class CheckoutSerializer(serializers.Serializer):
+
+    contact_information = serializers.DictField(required=True)
+    shipping_address = serializers.DictField(required=True)
+
+    def validate(self, data):
+
+        contact = data["contact_information"]
+        address = data["shipping_address"]
+
+        # Contact information
+        required_contact_fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone"
+        ]
+
+        for field in required_contact_fields:
+            if field not in contact:
+                raise serializers.ValidationError({
+                    "contact_information": {
+                        field: "This field is required."
+                    }
+                })
+
+        # Shipping address
+        required_address_fields = [
+            "street_address",
+            "city",
+            "state",
+            "pincode"
+        ]
+
+        for field in required_address_fields:
+            if field not in address:
+                raise serializers.ValidationError({
+                    "shipping_address": {
+                        field: "This field is required."
+                    }
+                })
+
+        return data
 
 
 

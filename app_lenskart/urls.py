@@ -22,17 +22,30 @@ urlpatterns = [
     #Prescription
     path("prescription/",prescription_get_api,name="prescription"),
     path("prescription/create/",prescription_post_api,name="prescription_create"),
-    path("glass-product/",glass_product_get_api,name="glass_product_get"),
+
+    # SELECT LENS
+    path("select-lenses/<int:product_id>/",select_lens_api,name="select_lens_api"),
 
     # GLASS PRODUCT
     path("glass-product/create/",glass_product_post_api,name="glass_product_post"),
+    path("glass-product/",glass_product_get_api,name="glass_product_get"),
 
     #Wishlist
     path("wishlist/",add_wishlist,name="add_wishlist"),
 
+    #filters
     path("eyeglasses/",eyeglasses,name="eyeglasses"),
     path("sunglasses/",sunglasses,name="sunglasses"),
+    path("buy-one-get-one/", buy_one_get_one_products, name="buy-one-get-one" ),
 
     path("search/",search_products,name="search_products"),
-]
 
+    path("checkout/",checkout_api,name="checkout"),
+
+    path("product-details/", product_details, name="product-details" ),
+
+    path("product/", product_api, name="product_api"),
+    path("product/delete/<int:id>/",glass_product_delete_api,name="glass_product_delete_api"),
+    path("kids-club/",kids_club_api,name="kids_club"),
+
+]

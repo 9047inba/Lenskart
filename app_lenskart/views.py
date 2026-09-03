@@ -893,35 +893,89 @@ def prescription_post_api(request):
     )
 
 
-# ============================================================
-# GLASS PRODUCT - GET
-# GET /api/glass-product/?page=1&count=3
-# ============================================================
-
 @api_view(["GET"])
 def glass_product_get_api(request):
 
-    products = glass_product.objects.all().order_by("-id")
+    # ========================================================
+    # GET ALL PRODUCTS
+    # ========================================================
+
+    products = glass_product.objects.all()
 
     # ========================================================
-    # PAGE AND COUNT
+    # MODEL NAME FILTER
+    # ========================================================
+
+    model_name = request.GET.get("model_name")
+
+    if model_name:
+        products = products.filter(
+            model_name__icontains=model_name
+        )
+
+    # ========================================================
+    # CATEGORY FILTER
+    # ========================================================
+
+    category_type = request.GET.get("category_type")
+
+    if category_type:
+        products = products.filter(
+            category_type=category_type
+        )
+
+    # ========================================================
+    # STYLE FILTER
+    # ========================================================
+
+    structure_style = request.GET.get("structure_style")
+
+    if structure_style:
+        products = products.filter(
+            structure_style=structure_style
+        )
+
+    # ========================================================
+    # SIZE FILTER
+    # ========================================================
+
+    frame_size = request.GET.get("frame_size")
+
+    if frame_size:
+        products = products.filter(
+            frame_size=frame_size
+        )
+
+    # ========================================================
+    # ORDER BY
+    # ========================================================
+
+    products = products.order_by("-id")
+
+    # ========================================================
+    # PAGE & COUNT
     # ========================================================
 
     try:
 
-        page = int(request.GET.get("page", 1))
-        count = int(request.GET.get("count", 3))
+        page = int(
+            request.GET.get("page", 1)
+        )
+
+        count = int(
+            request.GET.get("count", 10)
+        )
 
         if page < 1:
             page = 1
 
         if count < 1:
-            count = 3
+            count = 10
 
     except (ValueError, TypeError):
 
         page = 1
-        count = 3
+        count = 10
 
     # ========================================================
     # PAGINATION
@@ -934,6 +988,10 @@ def glass_product_get_api(request):
 
     total_data = paginator.count
     total_pages = paginator.num_pages
+
+    # ========================================================
+    # GET REQUESTED PAGE
+    # ========================================================
 
     try:
 
@@ -959,7 +1017,7 @@ def glass_product_get_api(request):
     # ========================================================
 
     serializer = GlassProductSerializer(
-        result_page,
+        result_page.object_list,
         many=True
     )
 
@@ -983,6 +1041,7 @@ def glass_product_get_api(request):
 
 # ============================================================
 # GLASS PRODUCT - POST
+#
 # POST /api/glass-product/create/
 # ============================================================
 
@@ -992,10 +1051,6 @@ def glass_product_post_api(request):
     serializer = GlassProductSerializer(
         data=request.data
     )
-
-    # ========================================================
-    # VALIDATION
-    # ========================================================
 
     if serializer.is_valid():
 
@@ -1010,10 +1065,6 @@ def glass_product_post_api(request):
             status=status.HTTP_201_CREATED
         )
 
-    # ========================================================
-    # VALIDATION ERROR
-    # ========================================================
-
     return Response(
         {
             "status": False,
@@ -1022,6 +1073,329 @@ def glass_product_post_api(request):
         },
         status=status.HTTP_400_BAD_REQUEST
     )
+
+
+# GLASS PRODUCT - DELETE
+
+@api_view(["DELETE"])
+def glass_product_delete_api(request, id):
+
+    try:
+
+        product = glass_product.objects.get(
+            id=id
+        )
+
+    except glass_product.DoesNotExist:
+
+        return Response(
+            {
+                "status": False,
+                "message": "Glass product not found",
+                "data": []
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    product.delete()
+
+    return Response(
+        {
+            "status": True,
+            "message": "Glass product deleted successfully",
+            "id": id,
+            "data": []
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+# ============================================================
+# PRODUCT API
+# ============================================================
+
+@api_view(["GET"])
+def product_api(request):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response({
+            "message": "user_token is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # FIND USER
+    try:
+
+        user = Register.objects.get(
+            user_token=user_token
+        )
+
+    except Register.DoesNotExist:
+
+        return Response({
+            "message": "Invalid user_token"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # GET PARAMETERS
+    store = request.GET.get("store")
+    product_name = request.GET.get("product_name")
+
+    # STORE PRICE REQUIRED
+    if not store:
+
+        return Response(
+            {
+                "status": False,
+                "message": "store price is required",
+                "example": "/api/product/?store=1200",
+                "data": []
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # VALIDATE STORE PRICE
+    try:
+
+        store_price = float(store)
+
+        if store_price < 0:
+
+            return Response(
+                {
+                    "status": False,
+                    "message": "Price cannot be negative",
+                    "data": []
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    except (ValueError, TypeError):
+
+        return Response(
+            {
+                "status": False,
+                "message": "Invalid store price",
+                "data": []
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # PRICE FILTER
+    products = glass_product.objects.filter(
+        price=store_price
+    )
+
+    # PRODUCT NAME FILTER
+    if product_name:
+
+        products = products.filter(
+            product_name__icontains=product_name
+        )
+
+    # ORDER
+    products = products.order_by("-id")
+
+    # COUNT
+    count = request.query_params.get(
+        "count",
+        9
+    )
+
+    try:
+
+        count = int(count)
+
+    except ValueError:
+
+        return Response({
+            "message": "count must be a number"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    if count <= 0:
+
+        return Response({
+            "message": "count must be greater than 0"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # PAGINATION
+    paginator = PageNumberPagination()
+    paginator.page_size = count
+    result_page = paginator.paginate_queryset(products,request)
+
+    # SERIALIZER
+    serializer = GlassProductSerializer(
+        result_page,
+        many=True,
+        context={
+            "user": user
+        }
+    )
+
+    # PAGINATION DETAILS
+    current_page = paginator.page.number
+    total_pages = paginator.page.paginator.num_pages
+    total_items = paginator.page.paginator.count
+   
+    # PREVIOUS PAGE
+    if paginator.page.has_previous():
+
+        previous_page = (
+            paginator.page.previous_page_number()
+        )
+
+    else:
+
+        previous_page = None
+
+    # NEXT PAGE
+    if paginator.page.has_next():
+
+        next_page = (
+            paginator.page.next_page_number()
+        )
+
+    else:
+
+        next_page = None
+
+    # RESPONSE
+    return Response({
+        "status": True,
+        "message": "Products fetched successfully",
+        "store": store_price,
+        "product_name": product_name,
+        "pagination": {
+            "page": current_page,
+            "count": count,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "previous_page": previous_page,
+            "next_page": next_page
+        },
+        "data": serializer.data 
+    }, status=status.HTTP_200_OK)
+
+
+# ============================================================
+# KIDS CLUB API
+# ============================================================
+
+@api_view(["GET"])
+def kids_club_api(request):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response({
+            "message": "user_token is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+
+        user = Register.objects.get(
+            user_token=user_token
+        )
+
+    except Register.DoesNotExist:
+
+        return Response({
+            "message": "Invalid user_token"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    product_name = request.GET.get("product_name")
+    products = glass_product.objects.filter(category_type="kids_club")
+
+    if product_name:
+
+        products = products.filter(
+            product_name__icontains=product_name
+        )
+
+    products = products.order_by("-id")
+
+    # COUNT
+    count = request.query_params.get(
+        "count",
+        9
+    )
+
+    try:
+
+        count = int(count)
+
+    except ValueError:
+
+        return Response({
+            "message": "count must be a number"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    if count <= 0:
+
+        return Response({
+            "message": "count must be greater than 0"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # PAGINATION
+    paginator = PageNumberPagination()
+    paginator.page_size = count
+    result_page = paginator.paginate_queryset(products,request)
+
+    # SERIALIZER
+    serializer = GlassProductSerializer(
+        result_page,
+        many=True,
+        context={
+            "user": user
+        }
+    )
+
+    # PAGINATION DETAILS
+    current_page = paginator.page.number
+    total_pages = paginator.page.paginator.num_pages
+    total_items = paginator.page.paginator.count
+
+    # PREVIOUS PAGE
+    if paginator.page.has_previous():
+
+        previous_page = (
+            paginator.page.previous_page_number()
+        )
+
+    else:
+
+        previous_page = None
+
+    # NEXT PAGE
+    if paginator.page.has_next():
+
+        next_page = (
+            paginator.page.next_page_number()
+        )
+
+    else:
+
+        next_page = None
+
+    return Response({
+        "status": True,
+        "message": "Kids Club products fetched successfully",
+        "product_name": product_name,
+        "pagination": {
+            "page": current_page,
+            "count": count,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "previous_page": previous_page,
+            "next_page": next_page
+        },
+        "data": serializer.data
+
+    }, status=status.HTTP_200_OK)
 
 
 # ------------------------------------------------------------------------------------------
@@ -1524,6 +1898,131 @@ def sunglasses(request):
     }, status=status.HTTP_200_OK)
 
 
+@api_view(["GET"])
+def buy_one_get_one_products(request):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response({
+            "message": "user_token is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # FIND USER
+
+    try:
+
+        user = Register.objects.get(
+            user_token=user_token
+        )
+
+    except Register.DoesNotExist:
+
+        return Response({
+            "message": "Invalid user_token"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+    # GET COUNT
+
+    count = request.query_params.get(
+        "count",
+        9
+    )
+
+    try:
+
+        count = int(count)
+
+    except ValueError:
+
+        return Response({
+            "message": "count must be a number"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    if count <= 0:
+
+        return Response({
+            "message": "count must be greater than 0"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # GET BUY 1 GET 1 PRODUCTS
+
+    products = glass_product.objects.filter(
+        applicable_for_buy_one_get_one=True
+    ).order_by(
+        "-created_at"
+    )
+
+
+    # PAGINATION
+
+    paginator = PageNumberPagination()
+    paginator.page_size = count
+    result_page = paginator.paginate_queryset(products,request)
+
+    # SERIALIZER
+
+    serializer = GlassProductSerializer(
+        result_page,
+        many=True,
+        context={
+            "user": user
+        }
+    )
+    data = serializer.data
+
+    # PAGINATION DETAILS
+
+    current_page = paginator.page.number
+    total_pages = paginator.page.paginator.num_pages
+    total_items = paginator.page.paginator.count
+
+
+    # PREVIOUS PAGE
+
+    if paginator.page.has_previous():
+        previous_page = (
+            paginator.page.previous_page_number()
+        )
+
+    else:
+
+        previous_page = None
+
+
+    # NEXT PAGE
+
+    if paginator.page.has_next():
+        next_page = (
+            paginator.page.next_page_number()
+        )
+
+    else:
+
+        next_page = None
+
+
+    # RESPONSE
+
+    return Response({
+        "message": "Buy 1 Get 1 products fetched successfully",
+        "pagination": {
+            "page": current_page,
+            "count": count,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "previous_page": previous_page,
+            "next_page": next_page
+        },
+        "data": data
+
+    }, status=status.HTTP_200_OK)
+
 
 from django.db.models import Q
 
@@ -1632,4 +2131,317 @@ def search_products(request):
         "data": serializer.data
 
     }, status=status.HTTP_200_OK)
+
+
+# ============================================================
+# SELECT LENS API
+# ============================================================
+
+@api_view(["POST"])
+def select_lens_api(request, product_id):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response(
+            {
+                "success": False,
+                "message": "user_token is required in header"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ========================================================
+    # GET USER
+    # ========================================================
+
+    try:
+
+        user = Register.objects.get(
+            user_token=user_token
+        )
+
+    except Register.DoesNotExist:
+
+        return Response(
+            {
+                "success": False,
+                "message": "Invalid user_token"
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # ========================================================
+    # GET PRODUCT
+    # ========================================================
+
+    try:
+
+        product = glass_product.objects.get(
+            id=product_id
+        )
+
+    except glass_product.DoesNotExist:
+
+        return Response(
+            {
+                "success": False,
+                "message": "Product not found"
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # ========================================================
+    # VALIDATE REQUEST
+    # ========================================================
+
+    serializer = SelectLensSerializer(
+        data=request.data
+    )
+
+    if not serializer.is_valid():
+
+        return Response(
+            {
+                "success": False,
+                "message": "Validation error",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ========================================================
+    # SAVE SELECT LENS
+    # ========================================================
+
+    select_lens = serializer.save(
+        user=user,
+        product=product
+    )
+
+    # ========================================================
+    # PRESCRIPTION RESPONSE
+    # ========================================================
+
+    prescription_obj = select_lens.checkout_prescription
+
+    prescription_serializer = CheckoutPrescriptionSerializer(
+        prescription_obj
+    )
+
+    # ========================================================
+    # FINAL RESPONSE
+    # ========================================================
+
+    return Response(
+        {
+            "success": True,
+            "message": "Lens selection saved successfully.",
+            "data": {
+                "id": select_lens.id,
+                "lenstype": select_lens.lens_type,
+                "lenspackage": select_lens.lens_package,
+                "checkoutprescription": (prescription_serializer.data),
+                "created_at": select_lens.created_at,
+            }
+        },
+
+        status=status.HTTP_201_CREATED
+    )
+
+
+
+
+
+# ============================================================
+# CHECKOUT API
+# POST /api/checkout/
+# ============================================================
+
+@api_view(["POST"])
+def checkout_api(request):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response(
+            {
+                "success": False,
+                "message": "user_token is required in header"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ========================================================
+    # GET USER
+    # ========================================================
+
+    try:
+
+        user = Register.objects.get(user_token=user_token)
+
+    except Register.DoesNotExist:
+
+        return Response(
+            {
+                "success": False,
+                "message": "Invalid user_token"
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # ========================================================
+    # VALIDATE
+    # ========================================================
+
+    serializer = CheckoutSerializer(data=request.data)
+
+    if not serializer.is_valid():
+
+        return Response(
+            {
+                "success": False,
+                "message": "Validation error",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ========================================================
+    # GET DATA
+    # ========================================================
+
+    contact = serializer.validated_data["contact_information"]
+    shipping = serializer.validated_data["shipping_address"]
+
+    # ========================================================
+    # UPDATE USER EMAIL
+    # ========================================================
+
+    user.email = contact["email"]
+    user.save(update_fields=["email"])
+
+    # ========================================================
+    # CREATE ADDRESS
+    # ========================================================
+
+    address = Address.objects.create(
+        user=user,
+        full_name=(contact["first_name"]+ " "+ contact["last_name"]),
+        phone=contact["phone"],
+        street_address=shipping["street_address"],
+        city=shipping["city"],
+        state=shipping["state"],
+        pincode=shipping["pincode"],
+        landmark=shipping.get("landmark",""),
+        address_type=shipping.get("address_type","home"),
+    )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
+    return Response(
+        {
+            "success": True,
+            "message": "Checkout information saved successfully.",
+            "data": {
+                "contact_information": {
+                    "first_name": contact["first_name"],
+                    "last_name": contact["last_name"],
+                    "email": contact["email"],
+                    "phone": contact["phone"]
+                },
+                "shipping_address": {
+                    "full_name": address.full_name,
+                    "phone": address.phone,
+                    "street_address": address.street_address,
+                    "city": address.city,
+                    "state": address.state,
+                    "pincode": address.pincode,
+                    "landmark": address.landmark,
+                    "address_type": address.address_type
+                }
+            }
+        },
+
+        status=status.HTTP_201_CREATED
+    )
+
+
+@api_view(["GET"])
+def product_details(request):
+
+    user_token = request.headers.get("user-token")
+
+    if not user_token:
+
+        return Response({
+            "message": "user_token is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # FIND USER
+
+    try:
+
+        user = Register.objects.get(
+            user_token=user_token
+        )
+
+    except Register.DoesNotExist:
+
+        return Response({
+            "message": "Invalid user_token"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+    # GET PRODUCT ID
+
+    product_id = request.query_params.get("product-id")
+
+    if not product_id:
+
+        return Response({
+            "message": "product_id is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # FIND PRODUCT
+
+    try:
+
+        product = glass_product.objects.get(
+            id=product_id
+        )
+
+    except glass_product.DoesNotExist:
+
+        return Response({
+            "message": "Product not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+    # SERIALIZER
+
+    serializer = GlassProductSerializer(
+        product,
+        context={
+            "user": user
+        }
+    )
+
+
+    # RESPONSE
+
+    return Response({
+        "message": "Product details fetched successfully",
+        "data": serializer.data
+    }, status=status.HTTP_200_OK)
+
+
+
+
 

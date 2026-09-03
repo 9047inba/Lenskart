@@ -122,63 +122,84 @@ class prescription(models.Model):
 
 
 
+# class glass_product(models.Model):
+
+#     CATEGORY_CHOICES = [
+#         ("eyeglasses", "Eyeglasses"),
+#         ("sunglasses", "Sunglasses"),
+#         ("power_glass", "Power Glass"),
+#         ("contact_lenses", "Contact Lenses"),
+#         ("computer_bluelight", "Computer & Blue Light"),
+#     ]
+#     FRAME_SIZE_CHOICES = [
+#         ("S", "Small (S)"),
+#         ("M", "Medium (M)"),
+#         ("L", "Large (L)"),
+#         ("XL", "Extra Large (XL)"),
+#     ]
+#     STRUCTURE_STYLE_CHOICES = [
+#         ("oval", "Oval"),
+#         ("square", "Square"),
+#         ("rectangle", "Rectangle"),
+#         ("round", "Round"),
+#         ("cat_eye", "Cat Eye"),
+#         ("aviator", "Aviator"),
+#         ("wayfarer", "Wayfarer"),
+#         ("geometric", "Geometric"),
+#         ("browline", "Browline"),
+#         ("clubmaster", "Clubmaster"),
+#         ("rimless", "Rimless"),
+#         ("semi_rimless", "Semi Rimless"),
+#         ("full_rim", "Full Rim"),
+#     ]
+#     TARGET_AUDIENCE_CHOICES = [
+#         ("unisex", "Unisex"),
+#         ("men", "Men"),
+#         ("women", "Women"),
+#         ("kids", "Kids"),
+#     ]
+#     COLLECTION_TIER_CHOICES = [
+#         ("classic", "Classic"),
+#         ("executive", "Executive"),
+#         ("junior", "Junior"),
+#         ("essential", "Essential"),
+#         ("premium", "Premium"),
+#     ]
+#     model_name = models.CharField(max_length=200)
+#     category_type = models.CharField(max_length=50,choices=CATEGORY_CHOICES)
+#     frame_size = models.CharField(max_length=10,choices=FRAME_SIZE_CHOICES)
+#     price = models.DecimalField(max_digits=10,decimal_places=2)
+#     color = models.CharField(max_length=100,null=True,blank=True)
+#     rating = models.DecimalField(max_digits=3,decimal_places=1,default=0.0)
+#     structure_style = models.CharField(max_length=50,choices=STRUCTURE_STYLE_CHOICES)
+#     target_audience = models.CharField(max_length=20,choices=TARGET_AUDIENCE_CHOICES)
+#     collection_tier = models.CharField(max_length=20,choices=COLLECTION_TIER_CHOICES)
+#     includes_adjustable_nose_pad = models.BooleanField(default=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return self.model_name
+
+
 class glass_product(models.Model):
 
-    CATEGORY_CHOICES = [
-        ("eyeglasses", "Eyeglasses"),
-        ("sunglasses", "Sunglasses"),
-        ("power_glass", "Power Glass"),
-        ("contact_lenses", "Contact Lenses"),
-        ("computer_bluelight", "Computer & Blue Light"),
-    ]
-    FRAME_SIZE_CHOICES = [
-        ("S", "Small (S)"),
-        ("M", "Medium (M)"),
-        ("L", "Large (L)"),
-        ("XL", "Extra Large (XL)"),
-    ]
-    STRUCTURE_STYLE_CHOICES = [
-        ("oval", "Oval"),
-        ("square", "Square"),
-        ("rectangle", "Rectangle"),
-        ("round", "Round"),
-        ("cat_eye", "Cat Eye"),
-        ("aviator", "Aviator"),
-        ("wayfarer", "Wayfarer"),
-        ("geometric", "Geometric"),
-        ("browline", "Browline"),
-        ("clubmaster", "Clubmaster"),
-        ("rimless", "Rimless"),
-        ("semi_rimless", "Semi Rimless"),
-        ("full_rim", "Full Rim"),
-    ]
-    TARGET_AUDIENCE_CHOICES = [
-        ("unisex", "Unisex"),
-        ("men", "Men"),
-        ("women", "Women"),
-        ("kids", "Kids"),
-    ]
-    COLLECTION_TIER_CHOICES = [
-        ("classic", "Classic"),
-        ("executive", "Executive"),
-        ("junior", "Junior"),
-        ("essential", "Essential"),
-        ("premium", "Premium"),
-    ]
-    model_name = models.CharField(max_length=200)
-    category_type = models.CharField(max_length=50,choices=CATEGORY_CHOICES)
-    frame_size = models.CharField(max_length=10,choices=FRAME_SIZE_CHOICES)
+    product_name = models.CharField(max_length=200)
+    like = models.BooleanField(default=False)
+    category_type = models.CharField(max_length=50)
+    frame_size = models.CharField(max_length=10)
     price = models.DecimalField(max_digits=10,decimal_places=2)
-    color = models.CharField(max_length=100,null=True,blank=True)
-    rating = models.DecimalField(max_digits=3,decimal_places=1,default=0.0)
-    structure_style = models.CharField(max_length=50,choices=STRUCTURE_STYLE_CHOICES)
-    target_audience = models.CharField(max_length=20,choices=TARGET_AUDIENCE_CHOICES)
-    collection_tier = models.CharField(max_length=20,choices=COLLECTION_TIER_CHOICES)
+    color = models.CharField(max_length=50,blank=True,null=True)
+    rating = models.DecimalField(max_digits=2,decimal_places=1,default=0.0)
+    structure_style = models.CharField(max_length=50)
+    target_audience = models.CharField(max_length=20)
+    collection_tier = models.CharField(max_length=20)
+    available_colors = models.JSONField(default=list,blank=True)
     includes_adjustable_nose_pad = models.BooleanField(default=False)
+    applicable_for_buy_one_get_one = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.model_name
+        return self.product_name
 
 
 # ------------------------------------------------------------------------------------------
@@ -197,6 +218,36 @@ class Wishlist(models.Model):
                 name="unique_user_product_wishlist"
             )
         ]
+
+    def __str__(self):
+        return f"{self.user.name} - {self.product.model_name}"
+
+
+
+# ============================================================
+# SELECT LENS
+# ============================================================
+
+class SelectLens(models.Model):
+
+    LENS_TYPE_CHOICES = [
+        ("single_vision", "Single Vision"),
+        ("zero_power", "Zero Power"),
+        ("bifocal_progressive", "Bifocal / Progressive"),
+    ]
+
+    LENS_PACKAGE_CHOICES = [
+        ("basic_anti_glare", "Basic Anti-Glare"),
+        ("blu_tech", "BLU Tech"),
+        ("premium_hydrophobic", "Premium Hydrophobic"),
+    ]
+
+    user = models.ForeignKey(Register,on_delete=models.CASCADE,related_name="selected_lenses")
+    product = models.ForeignKey(glass_product,on_delete=models.CASCADE,related_name="selected_lenses")
+    lens_type = models.CharField(max_length=50,choices=LENS_TYPE_CHOICES)
+    lens_package = models.CharField(max_length=50,choices=LENS_PACKAGE_CHOICES)
+    checkout_prescription = models.OneToOneField(prescription,on_delete=models.CASCADE,related_name="selected_lens")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.user.name} - {self.product.model_name}"
